@@ -1,17 +1,15 @@
+![alt tag](https://raw.githubusercontent.com/Comcast/vesper/master/stir.png)
+![alt tag](https://raw.githubusercontent.com/Comcast/vesper/master/shaken.png)
 # vesper - Secure Telephone Identity Management
 
-The repository hosts the code to run the application server which doubles up as an authentication service as
-well as verification service. When the originating CFCF sends the SIP payload via HTTP/HTTPS, the application
-server retrives retrieves the appropriate private key and signs the SIP INVITE based on 4474bis and passes the
-signed INVITE back to the CSCF. Likewise, the terminating CSCF passes the received SIP invite via HTTP/HTTPS
+The repository hosts the code to run the application server which supports rfc4474bis and PASSporT style authentication service and verification service. It is implemented with an HTTP RESTful API interface for flexibility.  When the originating call sends the SIP INVITE payload via HTTP/HTTPS, the application vesper server retrieves the appropriate private key and signs the SIP INVITE based on rfc4474bis and passes the signed INVITE back to the SIP proxy. The terminating SIP proxy passes the received SIP invite via HTTP/HTTPS
 to the application server to validate the signature in the identity header. 
 
 **NOTE: This is a work in progress project and has not implemented the 4474bis specification in its entirety.**
 
 ## Installation
 
-This application has been tested on Ubuntu 14.04 and Centos 7.1. The assumption is that it should work
-on other Debian and Red Hat distributions.
+This application has been tested on Ubuntu 14.04 and Centos 7.1. The assumption is that it should work on other Debian and Red Hat distributions.
 
 ### One-time Installation
 
@@ -91,3 +89,7 @@ Licensed under the Apache License, Version 2.0
 Copyright 2016 Comcast Cable Communications Management, LLC
 
 This product includes software developed at Comcast (http://www.comcast.com/).
+
+Cocktail Shaker by Sergey Demushkin from the Noun Project
+
+Cocktail by Dominique Vicent from the Noun Project
