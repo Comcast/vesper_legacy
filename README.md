@@ -1,5 +1,5 @@
-![alt tag](https://raw.githubusercontent.com/Comcast/vesper/master/stir.png)
-![alt tag](https://raw.githubusercontent.com/Comcast/vesper/master/shaken.png)
+![alt tag](https://github.com/Comcast/vesper/blob/master/stir.png)
+![alt tag](https://github.com/Comcast/vesper/blob/master/shaken.png)
 # vesper - Secure Telephone Identity Management
 
 The repository hosts the code to run the application server which supports rfc4474bis and PASSporT style authentication service and verification service. It is implemented with an HTTP RESTful API interface for flexibility.  When the originating call sends the SIP INVITE payload via HTTP/HTTPS, the application vesper server retrieves the appropriate private key and signs the SIP INVITE based on rfc4474bis and passes the signed INVITE back to the SIP proxy. The terminating SIP proxy passes the received SIP invite via HTTP/HTTPS
