@@ -1,0 +1,12 @@
+{
+        "log_file" : "/var/log/sip_app_server/sip_app_server.log",
+        "fqdn" : "st-sipappsrvr-wcdcc-001.poc.sys.comcast.net",
+        "authentication" : {
+                "alg" : "RS256",
+                "x5u" : "http://vesper.example.com/vesper.pub",
+                "private_key_file" : "/home/clduser/app_server/config/vesper.pem"
+        },
+        "verification" : {
+                "vesper" : "/home/clduser/token_generator/config/vesper.pub"
+        }
+}
