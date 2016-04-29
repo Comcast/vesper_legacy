@@ -1,3 +1,5 @@
+// Copyright 2016 Comcast Cable Communications Management, LLC
+
 package main
 
 import (
@@ -6,7 +8,7 @@ import (
 	"github.com/httprouter"
 )
 
-const software_version = `SPI TEST BED Appication Server 1.0.1-0`
+const software_version = `STIR Appication Server 1.0.0`
 
 type VersionQueryResponse struct {
 	Version string
