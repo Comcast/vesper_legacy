@@ -5,7 +5,7 @@ package main
 import (
 	"net/http"
 	"encoding/json"
-	"github.com/httprouter"
+	"github.com/julienschmidt/httprouter"
 )
 
 const software_version = `STIR Appication Server 1.0.0`

@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
-	"github.com/httprouter"
+	"github.com/julienschmidt/httprouter"
 )
 
 var (

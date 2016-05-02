@@ -4,7 +4,7 @@ package main
 
 import (
 	"net/http"
-	"github.com/httprouter"
+	"github.com/julienschmidt/httprouter"
 	"time"
 	"io/ioutil"
 	"regexp"
