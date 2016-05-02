@@ -7,6 +7,6 @@
                 "private_key_file" : "./config/private-key.pem"
         },
         "verification" : {
-                "vesper" : "./config/pub-key.pub"
+                "vesper" : "./config/pub-key.pem"
         }
 }
