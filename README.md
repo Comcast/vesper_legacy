@@ -40,7 +40,7 @@ This application has been tested on Ubuntu 14.04 and Centos 7.1. The assumption 
  
 	```sh
 	# cd $HOME
-	# svn checkout https://github.com/comcast/vesper/trunk vesper
+	# git  clone https://github.com/Comcast/vesper
 	```
 
 - Add the **GOPATH** and **GOBIN** environment variables to the profile (either **.bash_profile** or **.profile** 
@@ -56,6 +56,17 @@ This application has been tested on Ubuntu 14.04 and Centos 7.1. The assumption 
 	# echo 'export GOBIN=$GOPATH/bin' >> ~/.bash_profile
 	```
 
+## Install Dependencies
+
+Install the dependencies
+
+	```sh
+    # go get github.com/julienschmidt/httprouter 
+    # go install github.com/julienschmidt/httprouter 
+	```
+
+
+
 ## Compiling the application
 
 This [link](https://golang.org/cmd/go/) explains how to use the **go** tool. Since the environment variables **GOPATH**
@@ -64,8 +75,21 @@ and **GOBIN** are already set, the **go** tool can be run **from anywhere**.
 - To compile and install the application (in GOBIN) with one command run
 
 	```sh
-	# go install app_server
+	# go install vesper
 	```
+
+## Setup the Config
+
+Create the log file directory
+
+	```sh
+	# sudo mkdir /var/log/vesper/
+	# sudo chmod a+rwX /var/log/vesper/
+	```
+
+Setup the private and public key
+
+TODO
 
 ## Running the application
 
@@ -74,9 +98,30 @@ the configuration file will reside in GOPATH/config directory. An example for ru
 like this
 
 ```sh
-# $HOME/vesper/bin/app_server $HOME/vesper/config/config.json
+# $GOBIN/vesper $HOME/vesper/config/config.json
 ```
- 
+
+# Test it out
+
+Check it is running with
+
+    ```sh
+   # curl http://127.0.0.1:9000/v1/version
+   ```
+   
+this should return something like
+
+    ```
+    {"Version":"STIR Appication Server 1.0.0"}
+    ```
+
+
+Try a test message with
+
+    ```sh
+   # curl --data-binary "@test/example.sip" http://127.0.0.1:9000/v1/sippacket 
+   ```
+
 ## References
 
 - [Authenticated Identity Management in the Session Initiation Protocol](https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-08)
