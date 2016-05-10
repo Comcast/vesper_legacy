@@ -310,7 +310,11 @@ func get_tn_or_uri(header_text string) (psc string, is_tel bool, err error) {
 			return
 		}
 		header_text = header_text[next_quote+1:]
-	} // else display name is unquoted, so match until the next whitespace character
+	} else {
+		// else display name, if present, is unquoted
+		index_after_display_name := strings.Index(header_text, "<")
+		header_text = header_text[index_after_display_name:]
+	}
 	
 	// Work out where the SIP URI starts and ends.
 	header_text = strings.TrimSpace(header_text)
