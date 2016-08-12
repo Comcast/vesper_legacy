@@ -79,8 +79,8 @@ like this
  
 ## References
 
-- [Authenticated Identity Management in the Session Initiation Protocol](https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-08)
-- [Persona Assertion Token](https://tools.ietf.org/html/draft-ietf-stir-passport-01)
+- [Authenticated Identity Management in the Session Initiation Protocol](https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-10)
+- [Persona Assertion Token](https://tools.ietf.org/html/draft-ietf-stir-passport-05)
 
 ###License and Copyright
 
