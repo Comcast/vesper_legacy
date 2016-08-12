@@ -19,4 +19,4 @@ WORKDIR /usr/local
 # The expectation is that the SSH key file to github account is present in $HOME/.ssh directory
 # with the right permissions
 RUN git clone git@github.com:Comcast/vesper.git
-RUN go install vesper
+RUN go install app_server

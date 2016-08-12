@@ -13,6 +13,13 @@ import (
 	"strconv"
 )
 
+// structure that holds JWT claims
+type Claims struct {
+	Dest  map[string]interface{} `json:"dest"`   // unmarshals a JSON object into a string-keyed map
+	Iat   string  `json:"iat"`
+	Orig  map[string]interface{} `json:"orig"`   // unmarshals a JSON object into a string-keyed map
+}
+
 // process_sip_message parses the SIP message in the HTTP body in accordance
 // https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-08
 // Note: At this point in time
@@ -58,6 +65,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			return
 	}
 	
+	var claims Claims
 	// 4. extract all headers.
 	header_start_index := index + 2	// points to the first SIP header
 	index = strings.Index(sip_payload[header_start_index:], "\r\n\r\n")
@@ -238,6 +246,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 		logInfo("\"Identity\" header not in SIP payload");				
 		// Adding "Identity" header as the last header in the new SIP payload
 		header := "{\"typ\":\"passport\",\"alg\":\"" + Config.Authentication["alg"].(string) + "\",\"x5u\":\"" + Config.Authentication["x5u"].(string) + "\"}"
+		claims := "{\"" + dest + "\":\"" + from + "\",\"" + dest_type + "\":\"" + to + "\",\"iat\":\"" + strconv.FormatInt(iat, 10) + "\"}"
 		claims := "{\"" + orig_type + "\":\"" + from + "\",\"" + dest_type + "\":\"" + to + "\",\"iat\":\"" + strconv.FormatInt(iat, 10) + "\"}"
 		sig, err := create_signature(header, claims, Config.Authentication["alg"].(string))
 		if err != nil {

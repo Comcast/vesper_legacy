@@ -3,7 +3,7 @@ services:
   # Run "docket build -t vesper:1.1 ." in the directory which contains Dockerfile
   image: vesper:1.1
   # DO NOT tamper with this command
-  command: /usr/local/vesper/bin/vesper /usr/local/vesper/config/config.json
+  command: /usr/local/vesper/bin/app_server /usr/local/vesper/config/config.json
   volumes:
     # [HOST Path:CONTAINER Path]
     # NOTE: IF NEEDED, ONLY HOST PATH CAN BE CHANGED. DONOT CHANGE THE CONTAINER PATH

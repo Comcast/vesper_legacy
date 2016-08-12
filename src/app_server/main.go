@@ -29,6 +29,8 @@ var (
 type Configuration struct {
 	Log_file string
 	Fqdn string
+	Ssl_cert_file string
+	Ssl_key_file string	
 	Authentication map[string]interface{} `json:"authentication"`	// unmarshals a JSON object into a string-keyed map
 	Verification map[string]interface{} `json:"verification"`	// unmarshals a JSON object into a string-keyed map
 }
