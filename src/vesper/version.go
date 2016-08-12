@@ -8,7 +8,7 @@ import (
 	"github.com/httprouter"
 )
 
-const software_version = `STIR Appication Server 1.0.0`
+const software_version = `STIR Appication Server 1.1`
 
 type VersionQueryResponse struct {
 	Version string

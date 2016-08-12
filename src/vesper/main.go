@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 	"github.com/httprouter"
+	"github.com/cors"
 )
 
 var (
@@ -109,11 +110,36 @@ func main() {
 	// Start the service.
 	// Note: netstats -plnt shows a IPv6 TCP socket listening on localhost:9000
 	//       but no IPv4 TCP socket. This is not an issue
-	err := http.ListenAndServe(":9000", router)
-	if err != nil {
-		logError("Shutting down - %s", err)
-		log.Fatal(err)
+	c := cors.New(cors.Options{
+		AllowedMethods: []string{"GET", "POST"},
+		AllowedHeaders: []string{"accept", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	})
+	handler := c.Handler(router)
+	errs := make(chan error)
+
+	// Starting HTTP server
+ 	go func() {
+		logInfo("Staring HTTP service on port 80 ...")
+		// Start the service.
+		// Note: netstats -plnt shows a IPv6 TCP socket listening on ":80"
+		//       but no IPv4 TCP socket. This is not an issue
+		if err := http.ListenAndServe(":80", handler); err != nil {
+			errs <- err
+		}
+	 }()
+	// Starting HTTPS server
+	go func() {
+		logInfo("Staring HTTPS service on port 443 ...")
+		// Note: netstats -plnt shows a IPv6 TCP socket listening on ":443"
+		//       but no IPv4 TCP socket. This is not an issue
+		if err := http.ListenAndServeTLS(":443", Config.Ssl_cert_file, Config.Ssl_key_file, handler); err != nil {
+			errs <- err
+		}
+	}()
+	// This will run forever until channel receives error
+	select {
+	case err := <-errs:
+		logError("Could not start serving service due to (error: %s)", err)
 	}
-	logInfo("Serving HTTP on port 9000")
-	log.Fatal(http.ListenAndServe(":9000", nil))
 }

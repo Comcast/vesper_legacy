@@ -1,0 +1,22 @@
+services:
+  # The image name is in the [NAME:TAG] format. This should match what was used to build the Dockerfile 
+  # Run "docket build -t vesper:1.1 ." in the directory which contains Dockerfile
+  image: vesper:1.1
+  # DO NOT tamper with this command
+  command: /usr/local/vesper/bin/vesper /usr/local/vesper/config/config.json
+  volumes:
+    # [HOST Path:CONTAINER Path]
+    # NOTE: IF NEEDED, ONLY HOST PATH CAN BE CHANGED. DONOT CHANGE THE CONTAINER PATH
+    #
+    # The following line indicates HOST path which contains the config file required by the event manager
+    - /opt/vesper:/usr/local/vesper/config
+    #
+    # The following line indicates HOST path which contains the log files generated the event manager
+    - /var/log/vesper:/var/log/vesper
+    #
+    # The following line indicates HOST path which contains the certs 
+    - /opt/certs:/opt/certs
+    #
+  ports:
+    - 443:443
+    - 80:80
