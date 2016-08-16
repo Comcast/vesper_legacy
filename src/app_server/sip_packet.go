@@ -13,13 +13,6 @@ import (
 	"strconv"
 )
 
-// structure that holds JWT claims
-type Claims struct {
-	Dest  map[string]interface{} `json:"dest"`   // unmarshals a JSON object into a string-keyed map
-	Iat   string  `json:"iat"`
-	Orig  map[string]interface{} `json:"orig"`   // unmarshals a JSON object into a string-keyed map
-}
-
 // process_sip_message parses the SIP message in the HTTP body in accordance
 // https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-08
 // Note: At this point in time
@@ -65,7 +58,8 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			return
 	}
 	
-	var claims Claims
+	var jwt_claims Jwt_claims
+
 	// 4. extract all headers.
 	header_start_index := index + 2	// points to the first SIP header
 	index = strings.Index(sip_payload[header_start_index:], "\r\n\r\n")
@@ -89,7 +83,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	hdrs := strings.Split(sip_payload[header_start_index:header_start_index+index], "\r\n")
 
 	// 6. declare variables that serves in claims and header
-	var from, to, sig, x5u, alg, orig_type, dest_type string
+	var from, to, sig, x5u, alg, canonical_string, content_length string
 	var iat int64
 	date_header := false
 	identity_header := false
@@ -98,6 +92,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	//	2. From
 	//	3. To
 	//	4. Date
+	//	5. Content-Length 
 	for i := range hdrs {
 		logInfo("hdrs[%d] : %s", i, hdrs[i]);
 		sp := strings.IndexRune(hdrs[i], ':')
@@ -148,7 +143,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 				return
 			}
 			x5u = info[:x5u_end]
-			
+								
 			// 2.2. get "alg" if alg parameter present. Go back offset that indicates the 
 			//	end of signature in the Identity header
 			alg_info := id[end_of_sig:]
@@ -169,6 +164,32 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			} else {
 				alg = alg_info[:alg_end]
 			}
+			// If alg is not ES256 return error
+			if alg != "ES256" {
+				logError("Invalid algorithm in Identity header")
+				response.WriteHeader(http.StatusBadRequest)
+				response.Write([]byte("no alg info after signature"))
+				return
+			}
+			
+			// 2.3 check if canonical string is present
+			canon_str := id[end_of_sig:]
+			canon_start := strings.Index(canon_str[:], ";canon=")
+			if canon_start == -1 {
+				// no canonical string found
+			} else {
+				// JWT header and claims is assumed present. Validate
+				// offset to the start of the alg value in alg parameter
+				canon_str = canon_str[canon_start+7:]
+				canon_end := strings.Index(canon_str[:], ";")
+				if canon_end == -1 {
+					// Assume that this is the last parameter and hence ";" does not exist
+					// at the end
+					canonical_string = canon_str[:]
+				} else {
+					canonical_string = canon_str[:canon_end]
+				}			
+			}		
 		case "to":
 			// get telnumber from "To" and "From" header
 			var is_tel bool
@@ -182,10 +203,11 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			}
 			// "dtn" or "duri"
 			if is_tel {
-				dest_type = "dtn"
+				jwt_claims.Dest = map[string]interface{}{"tn":[]string{to}}
 			} else {
-				dest_type = "duri"
+				jwt_claims.Dest = map[string]interface{}{"uri":[]string{to}}
 			}
+			
 			// append header to payload to be sent as response
 			new_payload = new_payload + hdrs[i] + "\r\n"			
 		case "from":
@@ -201,10 +223,11 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			}
 			// "otn" or "ouri"
 			if is_tel {
-				orig_type = "otn"
+				jwt_claims.Orig = map[string]interface{}{"tn": string(from)}
 			} else {
-				orig_type = "ouri"
+				jwt_claims.Orig = map[string]interface{}{"uri": string(from)}
 			}
+
 			// append header to payload to be sent as response
 			new_payload = new_payload + hdrs[i] + "\r\n"			
 		case "date":
@@ -219,8 +242,13 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 				return
 			}
 			iat = t.Unix()
+			jwt_claims.Iat = strconv.FormatInt(iat, 10)
 			date_header = true
-			fallthrough
+			
+			// append header to payload to be sent as response
+			new_payload = new_payload + hdrs[i] + "\r\n"
+		case "content-length":
+			content_length = hdrs[i] + "\r\n"
 		default:
 			// append header to payload to be sent as response
 			new_payload = new_payload + hdrs[i] + "\r\n"
@@ -240,38 +268,66 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 		// if "Date" header is not found, we generate the JWS issued at time only
 		if !date_header {
 			iat = start.Unix()	// for claims
+			jwt_claims.Iat = strconv.FormatInt(iat, 10)
 			// Adding Date header
-			new_payload = new_payload + "Date: " + start.Format(time.RFC1123) + "\r\n"
+			new_payload = new_payload + "Date: " + strings.Replace(start.Format(time.RFC1123), "UTC", "GMT", -1) + "\r\n"
 		}	
-		logInfo("\"Identity\" header not in SIP payload");				
+		logInfo("\"Identity\" header not in SIP payload")		
+		// Initialize JWT header 
+		jwt_header := Jwt_header{"passport", "ES256", Config.Authentication["x5u"].(string)}
+		logInfo("%v", jwt_header)
+		logInfo("%v", jwt_claims)
 		// Adding "Identity" header as the last header in the new SIP payload
-		header := "{\"typ\":\"passport\",\"alg\":\"" + Config.Authentication["alg"].(string) + "\",\"x5u\":\"" + Config.Authentication["x5u"].(string) + "\"}"
-		claims := "{\"" + dest + "\":\"" + from + "\",\"" + dest_type + "\":\"" + to + "\",\"iat\":\"" + strconv.FormatInt(iat, 10) + "\"}"
-		claims := "{\"" + orig_type + "\":\"" + from + "\",\"" + dest_type + "\":\"" + to + "\",\"iat\":\"" + strconv.FormatInt(iat, 10) + "\"}"
-		sig, err := create_signature(header, claims, Config.Authentication["alg"].(string))
+		canonical_string, sig, err := create_signature(&jwt_header, &jwt_claims)
 		if err != nil {
 			logError("Issue creating JWS : %v", err)
 			response.WriteHeader(http.StatusBadRequest)
 			response.Write([]byte(err.Error()))
 			return
 		}
-		new_payload = new_payload + "Identity: " + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">;alg=" + Config.Authentication["alg"].(string)  + "\r\n"
+		if Config.Canon {
+			new_payload = new_payload + "Identity: " + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">;alg=ES256;canon="  + canonical_string + "\r\n"
+		} else {
+			new_payload = new_payload + "Identity: " + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">;alg=ES256\r\n"
+		}
+		// Append Content-Length as the last header before message body
+		new_payload = new_payload + content_length
 		response.WriteHeader(http.StatusOK)
 	} else {
 		// identity header found
-		if !date_header {
+		if !date_header && len(canonical_string) == 0 {
 			// Date Header not found. If the Identity header exists, the Date header MUST also exist
 			logError("Date header not present")
 			response.WriteHeader(http.StatusForbidden)
 			response.Write([]byte("Date header not present"))
 			return
 		}	
-		
-		header := "{\"typ\":\"passport\",\"alg\":\"" + alg + "\",\"x5u\":\"" + x5u + "\"}"
-		claims := "{\"" + orig_type + "\":\"" + from + "\",\"" + dest_type + "\":\"" + to + "\",\"iat\":\"" + strconv.FormatInt(iat, 10) + "\"}"
+		// if canonical string does not exist, create header and claims
+		var jwt string
+		if len(canonical_string) == 0 {
+			// construct JWT header 
+			jwt_header := Jwt_header{"passport", alg, x5u}
+			h, err := jwt_header.encode()
+			if err != nil {
+				logError("%v", err)
+				response.WriteHeader(http.StatusForbidden)
+				response.Write([]byte(err.Error()))
+				return
+			}
+			c, err := jwt_claims.encode()
+			if err != nil {
+				logError("%v", err)
+				response.WriteHeader(http.StatusForbidden)
+				response.Write([]byte(err.Error()))
+				return
+			}
+			jwt = fmt.Sprintf("%s.%s.%s", h, c, sig)			
+		} else {
+			jwt = fmt.Sprintf("%s.%s", canonical_string, sig)
+		}
 		// new_payload contains a copy of the incoming SIP payload upto the last header except
 		// for the "Identity" header
-		err := verify_signature(header, claims, sig, alg)
+		err := verify_signature(x5u, jwt)
 		if err != nil {
 			logError("%v", err)
 			response.WriteHeader(http.StatusForbidden)

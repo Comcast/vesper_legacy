@@ -1,10 +1,10 @@
 {
 	"log_file" : "/var/log/app_server/app_server.log",
 	"fqdn" : "st-sipappsrvr-wcdcc-001.poc.sys.comcast.net",
-	"ssl_cert_file string
-	"ssl_key_file string
+	"ssl_cert_file" : "",
+	"ssl_key_file" : "",
+	"canon" : true,
 	"authentication" : {
-		"alg" : "ES256",
 		"x5u" : "",
 		"pvt_key_file" : ""
 	}

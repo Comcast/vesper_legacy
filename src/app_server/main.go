@@ -30,9 +30,9 @@ type Configuration struct {
 	Log_file string
 	Fqdn string
 	Ssl_cert_file string
-	Ssl_key_file string	
+	Ssl_key_file string
+	Canon bool
 	Authentication map[string]interface{} `json:"authentication"`	// unmarshals a JSON object into a string-keyed map
-	Verification map[string]interface{} `json:"verification"`	// unmarshals a JSON object into a string-keyed map
 }
 
 // Read from configuration file and validate keys exist
