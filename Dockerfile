@@ -2,6 +2,8 @@ FROM ubuntu:14.04
 
 Maintainer Harsha Bellur
 
+# MUST build Dockerfile as root
+
 RUN apt-get update
 RUN apt-get -y install curl
 RUN apt-get -y install git
@@ -13,10 +15,13 @@ ENV PATH /usr/local/go/bin:/usr/local/bin:$PATH
 ENV GOPATH /usr/local/vesper
 ENV GOBIN $GOPATH/bin
 
+# SSH key for github account
+# The expectation is that the directory which has the "Dockerfile" must also contain 
+# a directory named "keys" which contains the SSH key file for the github account 
+COPY keys/id_rsa ~/.ssh/id_rsa
+RUN chmod 700 ~/.ssh/id_rsa && echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
+
 # Download and Install Vesper
 WORKDIR /usr/local
-# SSH key for github account
-# The expectation is that the SSH key file to github account is present in $HOME/.ssh directory
-# with the right permissions
 RUN git clone git@github.com:Comcast/vesper.git
 RUN go install app_server
