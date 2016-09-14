@@ -83,10 +83,11 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	hdrs := strings.Split(sip_payload[header_start_index:header_start_index+index], "\r\n")
 
 	// 6. declare variables that serves in claims and header
-	var from, to, sig, x5u, alg, canonical_string, content_length string
+	var from, to, sig, x5u, canonical_string, content_length string
 	var iat int64
 	date_header := false
 	identity_header := false
+	alg := "ES256"	// default
 	// 7. iterate the SIP headers to find the following headers and extract information
 	//	1. Identity
 	//	2. From
@@ -148,29 +149,28 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			//	end of signature in the Identity header
 			alg_info := id[end_of_sig:]
 			alg_start := strings.Index(alg_info[:], ";alg=")
-			if alg_start == -1 {
-				logError("no alg info after signature")
-				response.WriteHeader(http.StatusBadRequest)
-				response.Write([]byte("no alg info after signature"))
-				return
-			}
-			// offset to the start of the alg value in alg parameter
-			alg_info = alg_info[alg_start+5:]
-			alg_end := strings.Index(alg_info[:], ";")
-			if alg_end == -1 {
-				// Assume that this is the last parameter and hence ";" does not exist
-				// at the end
-				alg = alg_info[:]
-			} else {
-				alg = alg_info[:alg_end]
-			}
-			// If alg is not ES256 return error
-			if alg != "ES256" {
-				logError("Invalid algorithm in Identity header")
-				response.WriteHeader(http.StatusBadRequest)
-				response.Write([]byte("no alg info after signature"))
-				return
-			}
+			if alg_start > -1 {
+				// offset to the start of the alg value in alg parameter
+				alg_info = alg_info[alg_start+5:]
+				alg_end := strings.Index(alg_info[:], ";")
+				if alg_end == -1 {
+					// Assume that this is the last parameter and hence ";" does not exist
+					// at the end
+					alg = alg_info[:]
+				} else {
+					alg = alg_info[:alg_end]
+				}
+				// If alg is not ES256 return error
+				if alg != "ES256" {
+					logError("Invalid algorithm in Identity header")
+					response.WriteHeader(http.StatusBadRequest)
+					response.Write([]byte("Invalid algorithm in Identity header"))
+					return
+				}
+			} 
+			// else
+      // "alg" parameter is absent from the Identity header, the default
+      // value is "ES256" - section 4.1 in https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-12
 			
 			// 2.3 check if canonical string is present
 			canon_str := id[end_of_sig:]
@@ -352,7 +352,14 @@ func is_sip_invite(str string) bool  {
 	return r.MatchString(str)
 }
 
+func is_tel_no(str string) bool  {
+	r, _ := regexp.Compile(`^\+?([0-9-.]+)$`)
+	return r.MatchString(str)
+}
+
 // get_tn_or_uri parses From and To header
+// Conforms to section 8.1 (Differentiating Telephone Numbers from URIs) 
+// in https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-12
 func get_tn_or_uri(header_text string) (psc string, is_tel bool, err error) {
 	is_tel = false
 	if len(header_text) == 0 {
@@ -362,10 +369,10 @@ func get_tn_or_uri(header_text string) (psc string, is_tel bool, err error) {
 	
 	header_text_copy := header_text
 	header_text = strings.TrimSpace(header_text)
-	display_name_present := true
+	display_name_present := false
 	// There is a display name present. Let's parse it.
 	if header_text[0] == '"' {    
-		display_name_present = false 		
+		display_name_present = true 		
 		// The display name is within quotations.
 		header_text = header_text[1:]
 		next_quote := strings.Index(header_text, "\"")
@@ -378,10 +385,12 @@ func get_tn_or_uri(header_text string) (psc string, is_tel bool, err error) {
 	} else {
 		// else display name, if present, is unquoted
 		index_after_display_name := strings.Index(header_text, "<")
-		header_text = header_text[index_after_display_name:]
+		if index_after_display_name > -1 {
+			header_text = header_text[index_after_display_name:]
+		} // else no display name with or without quote
 	}
 	
-	// Work out where the SIP URI starts and ends.
+	// Work out where the SIP/TEL URI starts and ends.
 	header_text = strings.TrimSpace(header_text)
 	var end_of_uri int
 	if header_text[0] != '<' {
@@ -420,51 +429,61 @@ func get_tn_or_uri(header_text string) (psc string, is_tel bool, err error) {
 		return
 	}
 
-	is_sip := false
+	is_sips := false
+	is_tel = false
 	switch strings.ToLower(header_text[:colon_index]) {
 	case "sip":
 		header_text = header_text[3:]
-		is_sip = true
+	case "tel":
+		header_text = header_text[3:]
+		is_tel = true
 	case "sips":
 		header_text = header_text[4:]
+		is_sips = true
 	default:
 		err = fmt.Errorf("Unsupported URI schema %s", header_text[:colon_index])
 	}
-	// The 'sip' or 'sips' protocol name should be followed by a ':' character.
+	// 'tel' or 'sip' or 'sips' protocol name should be followed by a ':' character.
 	if header_text[0] != ':' {
 		err = fmt.Errorf("no ':' after protocol name in SIP uri '%s'", header_text)
 		return
 	}
-	// go to the 
+	// go to the beginning of the uri
 	header_text = header_text[1:]
 	
-	// First validate if "user=phone" parameter exists
-	tel_param_index := strings.Index(header_text, ";user=phone")
-	if tel_param_index > 0 || header_text[0] == '+' {
+	// This could be of the format
+	// 1. tel num\r\n
+	// 2. tel num>\r\n
+	// 3. tel num@domain\r\n
+	// 4. tel num@domain>\r\n
+	// 5. tel num@domain;...\r\n
+	// 6. name@domain\r\n
+	// 7. name@domain>\r\n
+	// 8. name@domain;...\r\n
+	end_of_user_info_part := strings.Index(header_text, "@")
+	if end_of_user_info_part == -1 {
+		// Assume this is a SIP URI
+		end_of_user_info_part = len(header_text)
+	}
+	// Check if tel number
+	if is_tel_no(header_text[:end_of_user_info_part]) {
+		psc = header_text[:end_of_user_info_part]
 		is_tel = true
-		end_of_user_info_part := strings.Index(header_text, "@")
-		if end_of_user_info_part == -1 {
-			err = fmt.Errorf("no '@' after e164 number in uri '%s'", header_text)
+		err = nil
+		return
+	} else {
+		if is_tel {
+			err = fmt.Errorf("Invalid tel format :'%s'", header_text)
+			return
+		} else {
+			if is_sips {
+				psc = "sips:" + header_text
+			} else {
+				psc = "sip:" + header_text
+			}
+			is_tel = false
+			err = nil
 			return
 		}
-		header_text = header_text[:end_of_user_info_part]
-		if header_text[0] == '+' {	// + before 11 digit number. ex: +12155551212
-			psc = header_text[1:end_of_user_info_part]
-		} else {				// no + before 11 digit number. ex: 12155551212
-			psc = header_text[:end_of_user_info_part]
-		}
-	} else {
-		// This is a SIP URI
-		eou := strings.Index(header_text, ";")
-		if eou > 0 {
-			header_text = header_text[:eou]
-		}
-		if is_sip {
-			psc = "sip:" + header_text
-		} else {	//"sips:"
-			psc = "sips:" + header_text
-		}
-	}	
-	err = nil
-	return
+	}
 }
