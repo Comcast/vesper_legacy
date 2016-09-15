@@ -19,8 +19,8 @@ import (
 
 // structure that holds JWT header
 type Jwt_header struct {
-	Typ string `json:"typ"`
 	Alg string `json:"alg"`
+	Typ string `json:"typ"`
 	X5u string `json:"x5u"`
 }
 

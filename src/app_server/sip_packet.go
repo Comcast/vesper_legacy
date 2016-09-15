@@ -274,7 +274,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 		}	
 		logInfo("\"Identity\" header not in SIP payload")		
 		// Initialize JWT header 
-		jwt_header := Jwt_header{"passport", "ES256", Config.Authentication["x5u"].(string)}
+		jwt_header := Jwt_header{"ES256", "passport", Config.Authentication["x5u"].(string)}
 		logInfo("%v", jwt_header)
 		logInfo("%v", jwt_claims)
 		// Adding "Identity" header as the last header in the new SIP payload
@@ -306,7 +306,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 		var jwt string
 		if len(canonical_string) == 0 {
 			// construct JWT header 
-			jwt_header := Jwt_header{"passport", alg, x5u}
+			jwt_header := Jwt_header{alg, "passport", x5u}
 			h, err := jwt_header.encode()
 			if err != nil {
 				logError("%v", err)
