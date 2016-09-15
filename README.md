@@ -13,14 +13,14 @@ This application has been tested on Ubuntu 14.04 and Centos 7.1. The assumption 
 
 ### One-time Installation
 
-- The application server in this repository has been written in golang ([GO 1.6.1](https://golang.org/doc/go1.6)).
+- The application server in this repository has been written in golang ([GO 1.7.1](https://golang.org/doc/go1.7)).
 	It is likely that installing GO using the package management software (yum or apt-get....) may not install
-	GO version 1.6.1. The following procedure will ensure that GO 1.6.1 will be installed.
+	GO version 1.7.1. The following procedure will ensure that GO 1.7.1 will be installed.
 
 	```sh
 	# cd $HOME
-	# wget https://storage.googleapis.com/golang/go1.6.1.linux-amd64.tar.gz
-	# tar -C /usr/local -xzf ./go1.6.1.linux-amd64.tar.gz
+	# wget https://storage.googleapis.com/golang/go1.7.1.linux-amd64.tar.gz
+	# tar -C /usr/local -xzf ./go1.7.1.linux-amd64.tar.gz
 	```
 	
 - Add the following environment variable to the profile (either **.bash_profile** or **.profile** located in $HOME directory.	
