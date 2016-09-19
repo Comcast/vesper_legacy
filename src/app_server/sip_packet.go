@@ -334,6 +334,8 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			response.Write([]byte(err.Error()))
 			return
 		}
+		// Append Content-Length as the last header before message body
+		new_payload = new_payload + content_length		
 		response.WriteHeader(http.StatusOK)
 	}
 	// 9. Append CRLF + SIP message body if present
