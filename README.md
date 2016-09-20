@@ -67,6 +67,51 @@ and **GOBIN** are already set, the **go** tool can be run **from anywhere**.
 	# go install app_server
 	```
 
+## Configuration
+At startup, the application expects to read a JSON object in a configuration file. The following are the keysthat can be present
+in the JSON object
+
+### log_file
+This is file that vesper logs information. Typically, the value contains the ABSOLUTE PATH (to avoid confusion) followed 
+by the log file name
+
+### fqdn
+This is the IP address or domain name of the host on which vesper is running. The fqdn appears in every line in the log file
+
+### ssl_cert_file
+If vesper is to run as a HTTPs server, the server MUST be reachable via a FQDN and MUST also have valid X.509 certificate and key file
+
+### ssl_key_file
+Private key file associated to the certificate used to run vesper as a HTTPs server
+
+### canon
+When signing the JWS, this boolean determines whether the SIP Identity header must also include the header and claims.
+
+### authentication
+
+#### x5u
+This is the URL which contains the path to the cert file which will be required to verify the signature created using the
+elliptic curve based private key
+
+#### pvt_key_file
+This file contains the elliptic curve based private key in PEM format. This key is used to sign the JWS in the SIP Identity header.
+ 
+- Example
+
+```sh
+{
+	"log_file" : "/var/log/app_server/app_server.log",
+	"fqdn" : "",
+	"ssl_cert_file" : "",
+	"ssl_key_file" : "",
+	"canon" : true,
+	"authentication" : {
+		"x5u" : "",
+		"pvt_key_file" : ""
+	}
+}
+```
+
 ## Running the application
 
 The executable is installed in GOBIN. The application expects to read a JSON object in a configuration file. Typically,
