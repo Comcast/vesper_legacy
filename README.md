@@ -47,12 +47,12 @@ This application has been tested on Ubuntu 14.04 and Centos 7.1. The assumption 
 	located in $HOME directory.	
 	
 	```sh
-	# echo 'export GOPATH=/usr/local/xrtc_event_manager' >> ~/.profile
+	# echo 'export GOPATH=$HOME/vesper' >> ~/.profile
 	# echo 'export GOBIN=$GOPATH/bin' >> ~/.profile
 	
 	OR
 	
-	# echo 'export GOPATH=/usr/local/xrtc_event_manager' >> ~/.bash_profile
+	# echo 'export GOPATH=$HOME/vesper' >> ~/.bash_profile
 	# echo 'export GOBIN=$GOPATH/bin' >> ~/.bash_profile
 	```
 
