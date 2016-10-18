@@ -27,7 +27,7 @@ type Jwt_header struct {
 // structure that holds JWT claims
 type Jwt_claims struct {
 	Dest  map[string]interface{} `json:"dest"`   // unmarshals a JSON object into a string-keyed map
-	Iat   string  `json:"iat"`
+	Iat   int64  `json:"iat"`
 	Orig  map[string]interface{} `json:"orig"`   // unmarshals a JSON object into a string-keyed map
 }
 

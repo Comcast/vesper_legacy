@@ -84,7 +84,6 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 
 	// 6. declare variables that serves in claims and header
 	var from, to, sig, x5u, canonical_string, content_length string
-	var iat int64
 	date_header := false
 	identity_header := false
 	alg := "ES256"	// default
@@ -241,8 +240,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 				response.Write([]byte(err.Error()))
 				return
 			}
-			iat = t.Unix()
-			jwt_claims.Iat = strconv.FormatInt(iat, 10)
+			jwt_claims.Iat = t.Unix()
 			date_header = true
 			
 			// append header to payload to be sent as response
@@ -267,8 +265,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	if !identity_header {
 		// if "Date" header is not found, we generate the JWS issued at time only
 		if !date_header {
-			iat = start.Unix()	// for claims
-			jwt_claims.Iat = strconv.FormatInt(iat, 10)
+			jwt_claims.Iat = start.Unix()	// for claims
 			// Adding Date header
 			new_payload = new_payload + "Date: " + strings.Replace(start.Format(time.RFC1123), "UTC", "GMT", -1) + "\r\n"
 		}	
