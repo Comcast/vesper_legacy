@@ -84,7 +84,7 @@ If vesper is to run as a HTTPs server, the server MUST be reachable via a FQDN a
 ### ssl_key_file
 Private key file associated to the certificate used to run vesper as a HTTPs server
 
-### canon
+### compact
 When signing the JWS, this boolean determines whether the SIP Identity header must also include the header and claims.
 
 ### authentication
@@ -104,7 +104,7 @@ This file contains the elliptic curve based private key in PEM format. This key 
 	"fqdn" : "",
 	"ssl_cert_file" : "",
 	"ssl_key_file" : "",
-	"canon" : true,
+	"compact" : false,
 	"authentication" : {
 		"x5u" : "",
 		"pvt_key_file" : ""

@@ -3,7 +3,7 @@
 	"fqdn" : "st-sipappsrvr-wcdcc-001.poc.sys.comcast.net",
 	"ssl_cert_file" : "",
 	"ssl_key_file" : "",
-	"canon" : true,
+	"compact" : true,
 	"authentication" : {
 		"x5u" : "",
 		"pvt_key_file" : ""

@@ -83,7 +83,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	hdrs := strings.Split(sip_payload[header_start_index:header_start_index+index], "\r\n")
 
 	// 6. declare variables that serves in claims and header
-	var from, to, sig, x5u, canonical_string, content_length string
+	var from, to, sig, x5u, jwt, content_length string
 	date_header := false
 	identity_header := false
 	alg := "ES256"	// default
@@ -118,13 +118,11 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 				response.Write([]byte("no parameters after signature"))
 				return
 			}
-			sig = id[:end_of_sig]
-			// logInfo("Signature only : %s", id[:end_of_sig])
 	
-			// 2. Start from the offset that indicates the end of signature
+			// 1. Start from the offset that indicates the end of signature
 			//		in the Identity header. Note: The parameters can be in any order after the
 			//		signature.
-			// 2.1. Get x5u value from info parameter, if present
+			// 1.1. Get x5u value from info parameter, if present
 			info := id[end_of_sig:]
 			x5u_start := strings.Index(info[:], ";info=<")
 			if x5u_start == -1 {
@@ -144,7 +142,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			}
 			x5u = info[:x5u_end]
 								
-			// 2.2. get "alg" if alg parameter present. Go back offset that indicates the 
+			// 1.2. get "alg" if alg parameter present. Go back offset that indicates the 
 			//	end of signature in the Identity header
 			alg_info := id[end_of_sig:]
 			alg_start := strings.Index(alg_info[:], ";alg=")
@@ -171,23 +169,24 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
       // "alg" parameter is absent from the Identity header, the default
       // value is "ES256" - section 4.1 in https://tools.ietf.org/html/draft-ietf-stir-rfc4474bis-12
 			
-			// 2.3 check if canonical string is present
-			canon_str := id[end_of_sig:]
-			canon_start := strings.Index(canon_str[:], ";canon=")
-			if canon_start == -1 {
+			// 2. check if full signature or compact form
+			compact_start := strings.Index(id[:end_of_sig], "..")
+			if compact_start == -1 {
 				// no canonical string found
+				// Assume full JWT present
+				jwt = id[:end_of_sig]
+				logInfo("JWT: %s", jwt)
 			} else {
-				// JWT header and claims is assumed present. Validate
-				// offset to the start of the alg value in alg parameter
-				canon_str = canon_str[canon_start+7:]
-				canon_end := strings.Index(canon_str[:], ";")
-				if canon_end == -1 {
-					// Assume that this is the last parameter and hence ";" does not exist
-					// at the end
-					canonical_string = canon_str[:]
-				} else {
-					canonical_string = canon_str[:canon_end]
-				}			
+				// Assume compact form. So, Identity header MUST start with ".."
+				if compact_start != 0 {
+					logError("Invalid compact form in Identity header")
+					response.WriteHeader(http.StatusBadRequest)
+					response.Write([]byte("Invalid compact form in Identity header"))
+					return
+				}
+				// Get signature part
+				sig = id[2:end_of_sig]
+				logInfo("Signature only : %s", sig)
 			}		
 		case "to":
 			// get telnumber from "To" and "From" header
@@ -282,17 +281,17 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			response.Write([]byte(err.Error()))
 			return
 		}
-		if Config.Canon {
-			new_payload = new_payload + "Identity: " + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">;alg=ES256;canon="  + canonical_string + "\r\n"
+		if Config.Compact {
+			new_payload = new_payload + "Identity: .." + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">\r\n"
 		} else {
-			new_payload = new_payload + "Identity: " + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">;alg=ES256\r\n"
+			new_payload = new_payload + "Identity: " + canonical_string + "." + sig + ";info=<" + Config.Authentication["x5u"].(string)  + ">\r\n"
 		}
 		// Append Content-Length as the last header before message body
 		new_payload = new_payload + content_length
 		response.WriteHeader(http.StatusOK)
 	} else {
 		// identity header found
-		if !date_header && len(canonical_string) == 0 {
+		if !date_header {
 			// Date Header not found. If the Identity header exists, the Date header MUST also exist
 			logError("Date header not present")
 			response.WriteHeader(http.StatusForbidden)
@@ -300,8 +299,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 			return
 		}	
 		// if canonical string does not exist, create header and claims
-		var jwt string
-		if len(canonical_string) == 0 {
+		if len(jwt) == 0 {
 			// construct JWT header 
 			jwt_header := Jwt_header{alg, "passport", x5u}
 			h, err := jwt_header.encode()
@@ -319,8 +317,6 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 				return
 			}
 			jwt = fmt.Sprintf("%s.%s.%s", h, c, sig)			
-		} else {
-			jwt = fmt.Sprintf("%s.%s", canonical_string, sig)
 		}
 		// new_payload contains a copy of the incoming SIP payload upto the last header except
 		// for the "Identity" header

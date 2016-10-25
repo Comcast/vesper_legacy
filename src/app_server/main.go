@@ -31,7 +31,7 @@ type Configuration struct {
 	Fqdn string
 	Ssl_cert_file string
 	Ssl_key_file string
-	Canon bool
+	Compact bool
 	Authentication map[string]interface{} `json:"authentication"`	// unmarshals a JSON object into a string-keyed map
 }
 
