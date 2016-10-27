@@ -59,6 +59,11 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	}
 	
 	var jwt_claims Jwt_claims
+	// poke in Attest and Origid
+        // jwt_claims.Attest = "A"
+        // jwt_claims.Origid = "123e4567-e89b-12d3-a456-426655440000"
+        jwt_claims.Attest = Config.Authentication["attest"].(string)
+        jwt_claims.Origid = Config.Authentication["origid"].(string)
 
 	// 4. extract all headers.
 	header_start_index := index + 2	// points to the first SIP header
@@ -84,6 +89,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 
 	// 6. declare variables that serves in claims and header
 	var from, to, sig, x5u, canonical_string, content_length string
+	var iat int64
 	date_header := false
 	identity_header := false
 	alg := "ES256"	// default
@@ -240,6 +246,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 				response.Write([]byte(err.Error()))
 				return
 			}
+			iat = t.Unix()
 			jwt_claims.Iat = t.Unix()
 			date_header = true
 			
@@ -265,13 +272,14 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 	if !identity_header {
 		// if "Date" header is not found, we generate the JWS issued at time only
 		if !date_header {
-			jwt_claims.Iat = start.Unix()	// for claims
+			iat = start.Unix()      // for claims
+                        jwt_claims.Iat = strconv.FormatInt(iat, 10)
 			// Adding Date header
 			new_payload = new_payload + "Date: " + strings.Replace(start.Format(time.RFC1123), "UTC", "GMT", -1) + "\r\n"
 		}	
 		logInfo("\"Identity\" header not in SIP payload")		
 		// Initialize JWT header 
-		jwt_header := Jwt_header{"ES256", "passport", Config.Authentication["x5u"].(string)}
+		jwt_header := Jwt_header{"ES256", "passport", "shaken", Config.Authentication["x5u"].(string)}
 		logInfo("%v", jwt_header)
 		logInfo("%v", jwt_claims)
 		// Adding "Identity" header as the last header in the new SIP payload
@@ -303,7 +311,7 @@ func process_sip_message(response http.ResponseWriter, request *http.Request, _ 
 		var jwt string
 		if len(canonical_string) == 0 {
 			// construct JWT header 
-			jwt_header := Jwt_header{alg, "passport", x5u}
+			jwt_header := Jwt_header{alg, "passport", "shaken", x5u}
 			h, err := jwt_header.encode()
 			if err != nil {
 				logError("%v", err)

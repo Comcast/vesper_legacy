@@ -21,14 +21,17 @@ import (
 type Jwt_header struct {
 	Alg string `json:"alg"`
 	Typ string `json:"typ"`
+	Ppt string `json:"ppt"`
 	X5u string `json:"x5u"`
 }
 
 // structure that holds JWT claims
 type Jwt_claims struct {
+	Attest   string  `json:"attest"`
 	Dest  map[string]interface{} `json:"dest"`   // unmarshals a JSON object into a string-keyed map
-	Iat   int64  `json:"iat"`
+	Iat   string  `json:"iat"`
 	Orig  map[string]interface{} `json:"orig"`   // unmarshals a JSON object into a string-keyed map
+	Origid   string  `json:"origid"`
 }
 
 // base64Encode returns and Base64url encoded version of the input string with any
